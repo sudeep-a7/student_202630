@@ -1,157 +1,115 @@
-"""
-Task Flattener - Recursively flatten nested task structures.
 
-This program demonstrates recursion by flattening a hierarchical task structure
-into a simple list of all tasks (removing the parent-child relationships).
-
-The recursive function processes nested tasks and subtasks, creating a flat list
-where each task appears as a single entry regardless of its nesting level.
-"""
-
-import csv
-import json
 import sys
-from typing import Any, Dict, List
+import json
+import csv
 
 
-def parse_arguments(arguments: list[str]) -> tuple[str, str]:
-    """Parse the JSON input file and CSV output file from sys.argv."""
-    if not arguments:
-        raise SystemExit(
-            "Usage: python task_flattener.py <input_file.json> [output_file.csv]"
-        )
+def parse_arguments():
+    """Read the input and output filenames."""
+    if len(sys.argv) < 2:
+        print("Usage: python task_flattener.py input.json [output.csv]")
+        sys.exit(1)
 
-    input_file = arguments[0]
-    output_file = "flattened_tasks.csv"
+    input_file = sys.argv[1]
 
-    if len(arguments) > 2:
-        raise SystemExit(
-            "Usage: python task_flattener.py <input_file.json> [output_file.csv]"
-        )
-
-    if len(arguments) == 2:
-        output_file = arguments[1]
+    if len(sys.argv) >= 3:
+        output_file = sys.argv[2]
+    else:
+        output_file = "flattened_tasks.csv"
 
     return input_file, output_file
 
 
-def flatten_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Recursively flatten a nested task structure into a flat list.
-
-    Implement the recursive logic that:
-    - processes each task in the list
-    - removes the nested ``sub_tasks`` structure from each task
-    - recursively visits every subtask
-    - returns a single flat list of task dictionaries
-
-    Example:
-        Input:
-        [
-            {
-                "details": "Parent",
-                "status": "In Progress",
-                "sub_tasks": [
-                    {"details": "Child", "status": "Done", "sub_tasks": []}
-                ]
-            }
-        ]
-
-        Output:
-        [
-            {"details": "Parent", "status": "In Progress"},
-            {"details": "Child", "status": "Done"}
-        ]
-    """
-    # TODO: implement the recursive flattening logic.
-    return []
-
-
-def read_tasks_from_json(filename: str) -> List[Dict[str, Any]]:
-    """
-    Read tasks from a JSON file.
-
-    Args:
-        filename: Path to JSON file containing task data
-
-    Returns:
-        List of task dictionaries
-
-    Raises:
-        FileNotFoundError: If the file doesn't exist
-        json.JSONDecodeError: If the file contains invalid JSON
-    """
-    try:
-        with open(filename, "r", encoding="utf-8") as f:
-            tasks = json.load(f)
-        return tasks
-    except FileNotFoundError:
-        print(f"Error: File '{filename}' not found.")
-        raise
-    except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON in file '{filename}': {e}")
-        raise
-
-
-def save_tasks_to_csv(tasks: List[Dict[str, Any]], filename: str) -> None:
-    """
-    Save a flat list of tasks to a CSV file.
-
-    Args:
-        tasks: Flat list of task dictionaries
-        filename: Output CSV filename
-
-    Raises:
-        ValueError: If tasks list is empty
-    """
-    if not tasks:
-        raise ValueError("Cannot save empty task list to CSV")
-
-    # Define CSV columns based on task structure
-    fieldnames = ["due_date", "start_date", "status", "priority", "details", "assignee"]
-
-    with open(filename, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-        # Write header row
-        writer.writeheader()
-
-        # Write each task as a row
-        for task in tasks:
-            writer.writerow(task)
-
-    print(f"Saved {len(tasks)} tasks to {filename}")
-
-
-def print_task_summary(tasks: List[Dict[str, Any]]) -> None:
-    """
-    Print a summary of tasks by status.
-
-    Args:
-        tasks: List of task dictionaries
-    """
-    status_counts = {}
+def flatten_tasks(tasks):
+    """Flatten nested tasks into a single list."""
+    flattened = []
 
     for task in tasks:
-        status = task.get("status", "Unknown")
-        status_counts[status] = status_counts.get(status, 0) + 1
+        # Copy the current task without its subtasks
+        flat_task = {
+            key: value
+            for key, value in task.items()
+            if key != "sub_tasks"
+        }
 
-    print("\nTask Summary:")
+        flattened.append(flat_task)
+
+        # Recursively flatten the subtasks
+        sub_tasks = task.get("sub_tasks", [])
+
+        if sub_tasks:
+            flattened.extend(flatten_tasks(sub_tasks))
+
+    return flattened
+
+
+def read_json(input_file):
+    """Read tasks from a JSON file."""
+    with open(input_file, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def save_csv(tasks, output_file):
+    """Save flattened tasks to a CSV file."""
+    if not tasks:
+        raise ValueError("The task list is empty. Nothing to save.")
+
+    # Use the task fields as CSV column headings
+    fieldnames = tasks[0].keys()
+
+    with open(output_file, "w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(tasks)
+
+
+def print_summary(tasks):
+    """Print a summary of the flattened tasks."""
     print(f"Total tasks: {len(tasks)}")
-    print("\nBy Status:")
-    for status, count in sorted(status_counts.items()):
-        print(f"  {status}: {count}")
+
+    for task in tasks:
+        details = task.get("details", "No description")
+        status = task.get("status", "Unknown")
+        assignee = task.get("assignee", "Unassigned")
+
+        print(f"{details}, {status}, {assignee}")
 
 
 def main():
-    """Run the task flattener application."""
-    # TODO: use sys.argv to read the input file and optional output file
-    # TODO: call parse_arguments(sys.argv[1:])
-    # TODO: open and read the JSON file using read_tasks_from_json()
-    # TODO: call flatten_tasks() to flatten the nested structure
-    # TODO: print a summary of the tasks using print_task_summary()
-    # TODO: save the flattened tasks to CSV using save_tasks_to_csv()
-    # TODO: handle missing files and invalid input gracefully
-    pass
+    input_file, output_file = parse_arguments()
+
+    try:
+        tasks = read_json(input_file)
+
+        if not isinstance(tasks, list):
+            print("Error: The JSON file must contain a list of tasks.")
+            return
+
+        flattened = flatten_tasks(tasks)
+
+        if not flattened:
+            raise ValueError("The task list is empty.")
+
+        print_summary(flattened)
+        save_csv(flattened, output_file)
+
+        print(f"Flattened tasks saved to '{output_file}'.")
+
+    except FileNotFoundError:
+        print(f"Error: File '{input_file}' not found.")
+        print(
+            "Please run 'python generate_sample_data.py' first "
+            "to create the input file"
+        )
+
+    except json.JSONDecodeError:
+        print(f"Error: File '{input_file}' does not contain valid JSON.")
+
+    except ValueError as error:
+        print(f"Error: {error}")
+
+    except OSError as error:
+        print(f"Error reading or writing file: {error}")
 
 
 if __name__ == "__main__":
